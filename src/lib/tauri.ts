@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import type { SearchResult, IndexStatus, FileChunk, Category } from "./types";
+import type { SearchResult, IndexStatus, FileChunk } from "./types";
 
 export interface SearchFilters {
   category?: string;

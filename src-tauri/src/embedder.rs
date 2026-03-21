@@ -9,11 +9,10 @@ pub struct Embedder;
 impl Embedder {
     pub fn new() -> Result<Self> {
         EMBEDDER.get_or_try_init(|| {
-            TextEmbedding::try_new(InitOptions {
-                model_name: EmbeddingModel::AllMiniLML6V2,
-                show_download_progress: false,
-                ..Default::default()
-            })
+            TextEmbedding::try_new(
+                InitOptions::new(EmbeddingModel::AllMiniLML6V2)
+                    .with_show_download_progress(false),
+            )
         })?;
         Ok(Self)
     }

@@ -1,11 +1,11 @@
 use crate::db::schema::file_chunks_schema;
 use anyhow::Result;
 use arrow_array::{
-    FixedSizeListArray, Float32Array, Int32Array, Int64Array, RecordBatch, StringArray,
-    TimestampMillisecondArray,
+    Array, FixedSizeListArray, Float32Array, Int32Array, Int64Array, RecordBatch,
+    RecordBatchIterator, StringArray, TimestampMillisecondArray,
 };
 use futures::TryStreamExt;
-use lancedb::{connect, Connection, Table};
+use lancedb::{connect, query::{ExecutableQuery, QueryBase}, Connection, Table};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
@@ -51,7 +51,9 @@ impl FileStore {
     pub async fn insert_chunks(&self, chunks: Vec<FileChunkRecord>) -> Result<()> {
         let tbl = self.table().await?;
         let batch = chunks_to_record_batch(chunks)?;
-        tbl.add(Box::new(std::iter::once(Ok(batch)))).execute().await?;
+        let schema = batch.schema();
+        let reader = RecordBatchIterator::new(vec![Ok(batch)], schema);
+        tbl.add(reader).execute().await?;
         Ok(())
     }
 
@@ -59,7 +61,7 @@ impl FileStore {
         let tbl = self.table().await?;
         let results = tbl
             .query()
-            .filter(format!("file_id = '{file_id}' AND deleted_at IS NULL"))
+            .only_if(format!("file_id = '{file_id}' AND deleted_at IS NULL"))
             .execute()
             .await?
             .try_collect::<Vec<_>>()
@@ -75,7 +77,7 @@ impl FileStore {
         };
         let results = tbl
             .query()
-            .filter(filter)
+            .only_if(filter)
             .execute()
             .await?
             .try_collect::<Vec<_>>()
@@ -87,8 +89,8 @@ impl FileStore {
         let tbl = self.table().await?;
         let now = chrono::Utc::now().timestamp_millis();
         tbl.update()
-            .filter(format!("path = '{path}'"))
-            .column("deleted_at", &now.to_string())
+            .only_if(format!("path = '{path}'"))
+            .column("deleted_at", now.to_string())
             .execute()
             .await?;
         Ok(())
@@ -97,8 +99,8 @@ impl FileStore {
     pub async fn update_user_category(&self, file_id: &str, category: &str) -> Result<()> {
         let tbl = self.table().await?;
         tbl.update()
-            .filter(format!("file_id = '{file_id}'"))
-            .column("user_category", &format!("'{category}'"))
+            .only_if(format!("file_id = '{file_id}'"))
+            .column("user_category", format!("'{category}'"))
             .execute()
             .await?;
         Ok(())
@@ -111,7 +113,6 @@ impl FileStore {
         filters: &crate::search::SearchFilters,
     ) -> Result<Vec<(f32, FileChunkRecord)>> {
         let tbl = self.table().await?;
-        let mut q = tbl.query().nearest_to(query)?.limit(limit);
         // build filter string
         let mut conditions = vec!["deleted_at IS NULL".to_string()];
         if let Some(cat) = &filters.category {
@@ -132,7 +133,11 @@ impl FileStore {
         if let Some(before) = filters.before_ms {
             conditions.push(format!("modified_at <= {before}"));
         }
-        q = q.filter(conditions.join(" AND "));
+        let q = tbl
+            .query()
+            .nearest_to(query.to_vec())?
+            .limit(limit)
+            .only_if(conditions.join(" AND "));
         let batches = q.execute().await?.try_collect::<Vec<_>>().await?;
         // _distance is appended as last column by LanceDB
         let scores: Vec<f32> = batches

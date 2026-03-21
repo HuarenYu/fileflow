@@ -14,7 +14,7 @@ use sha2::{Digest, Sha256};
 use std::path::Path;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
-use tauri::AppHandle;
+use tauri::{AppHandle, Emitter};
 use tokio::sync::Semaphore;
 
 #[derive(Clone, serde::Serialize)]

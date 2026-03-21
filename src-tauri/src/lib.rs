@@ -17,6 +17,7 @@ use std::{
     path::PathBuf,
     sync::{atomic::Ordering, Arc},
 };
+use tauri::Manager;
 use tokio::sync::Mutex;
 
 pub struct AppState {

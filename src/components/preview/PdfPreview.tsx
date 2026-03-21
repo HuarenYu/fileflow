@@ -22,6 +22,7 @@ export function PdfPreview({ path }: { path: string }) {
       canvas.height = viewport.height;
       await page.render({
         canvasContext: canvas.getContext("2d")!,
+        canvas,
         viewport,
       }).promise;
     }

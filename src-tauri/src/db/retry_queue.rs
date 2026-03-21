@@ -1,8 +1,9 @@
 use anyhow::Result;
 use rusqlite::{params, Connection};
+use std::sync::Mutex;
 
 pub struct RetryQueue {
-    conn: Connection,
+    conn: Mutex<Connection>,
 }
 
 impl RetryQueue {
@@ -16,11 +17,12 @@ impl RetryQueue {
                 created_at INTEGER NOT NULL
             );",
         )?;
-        Ok(Self { conn })
+        Ok(Self { conn: Mutex::new(conn) })
     }
 
     pub fn push(&self, path: &str, error: &str) -> Result<()> {
-        self.conn.execute(
+        let conn = self.conn.lock().unwrap();
+        conn.execute(
             "INSERT INTO retry_queue (path, error, created_at) VALUES (?1, ?2, ?3)",
             params![path, error, chrono::Utc::now().timestamp()],
         )?;
@@ -28,14 +30,13 @@ impl RetryQueue {
     }
 
     pub fn drain(&self) -> Result<Vec<String>> {
-        let mut stmt = self
-            .conn
-            .prepare("SELECT path FROM retry_queue ORDER BY created_at")?;
+        let conn = self.conn.lock().unwrap();
+        let mut stmt = conn.prepare("SELECT path FROM retry_queue ORDER BY created_at")?;
         let paths: Vec<String> = stmt
             .query_map([], |row| row.get(0))?
             .filter_map(|r| r.ok())
             .collect();
-        self.conn.execute("DELETE FROM retry_queue", [])?;
+        conn.execute("DELETE FROM retry_queue", [])?;
         Ok(paths)
     }
 }
