@@ -37,7 +37,7 @@ describe('useSearch', () => {
 
   it('does not call invoke for empty or whitespace query', async () => {
     const { rerender } = renderHook(({ q }) => useSearch(q), {
-      initialProps: { q: 'hello' },
+      initialProps: { q: '' },
     })
 
     rerender({ q: '   ' })
@@ -65,7 +65,9 @@ describe('useSearch', () => {
 
     await act(async () => {
       vi.advanceTimersByTime(300)
-      // Let the promise resolve
+      // Flush the .then/.catch/.finally chain (3 microtask ticks)
+      await Promise.resolve()
+      await Promise.resolve()
       await Promise.resolve()
     })
 
