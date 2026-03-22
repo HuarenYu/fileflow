@@ -96,6 +96,18 @@ impl FileStore {
         Ok(())
     }
 
+    pub async fn soft_delete_by_prefix(&self, prefix: &str) -> Result<()> {
+        let tbl = self.table().await?;
+        let now = chrono::Utc::now().timestamp_millis();
+        let safe_prefix = prefix.replace('\'', "''");
+        tbl.update()
+            .only_if(format!("path LIKE '{safe_prefix}%' AND deleted_at IS NULL"))
+            .column("deleted_at", now.to_string())
+            .execute()
+            .await?;
+        Ok(())
+    }
+
     pub async fn update_user_category(&self, file_id: &str, category: &str) -> Result<()> {
         let tbl = self.table().await?;
         tbl.update()
@@ -366,5 +378,44 @@ mod tests {
         let results = store.list_by_file_id("abc").await.unwrap();
         assert_eq!(results.len(), 1);
         assert_eq!(results[0].name, "file.pdf");
+    }
+
+    #[tokio::test]
+    async fn test_soft_delete_by_prefix() {
+        let dir = tempdir().unwrap();
+        let store = FileStore::new(dir.path().to_str().unwrap()).await.unwrap();
+
+        // Insert two chunks under /watched/dir/ and one outside
+        let make_chunk = |id: &str, path: &str| FileChunkRecord {
+            id: id.to_string(),
+            file_id: id.to_string(),
+            path: path.to_string(),
+            name: "f.txt".to_string(),
+            extension: "txt".to_string(),
+            size: 1,
+            modified_at: 0,
+            category: "document".to_string(),
+            user_category: None,
+            chunk_index: 0,
+            content_text: "x".to_string(),
+            vector: vec![0.0f32; 384],
+            thumbnail_path: None,
+            indexed_at: 0,
+            deleted_at: None,
+        };
+
+        store.insert_chunks(vec![
+            make_chunk("a", "/watched/dir/file1.txt"),
+            make_chunk("b", "/watched/dir/sub/file2.txt"),
+            make_chunk("c", "/other/file3.txt"),
+        ]).await.unwrap();
+
+        store.soft_delete_by_prefix("/watched/dir/").await.unwrap();
+
+        // a and b should be soft-deleted (not returned by list_by_file_id)
+        assert!(store.list_by_file_id("a").await.unwrap().is_empty());
+        assert!(store.list_by_file_id("b").await.unwrap().is_empty());
+        // c should still be visible
+        assert_eq!(store.list_by_file_id("c").await.unwrap().len(), 1);
     }
 }
