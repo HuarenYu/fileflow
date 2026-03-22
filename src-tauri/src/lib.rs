@@ -25,8 +25,10 @@ pub struct AppState {
     pub searcher: Arc<Searcher>,
     pub pipeline: Arc<IndexPipeline>,
     pub cache_dir: PathBuf,
+    pub app_dir: PathBuf,                           // NEW
     pub retry_queue: Arc<RetryQueue>,
     pub libreoffice_available: bool,
+    pub watched_dirs: Mutex<Vec<PathBuf>>,          // NEW
     /// Active file watcher (kept alive)
     _watcher: Mutex<Option<FileWatcher>>,
 }
@@ -59,6 +61,19 @@ impl AppState {
             failed: self.pipeline.failed.load(Ordering::Relaxed),
             is_running: false,
         }
+    }
+
+    async fn rebuild_watcher(&self) {
+        let dirs = self.watched_dirs.lock().await.clone();
+        let existing_dirs: Vec<PathBuf> = dirs.into_iter().filter(|d| d.exists()).collect();
+        let watcher = if existing_dirs.is_empty() {
+            None
+        } else {
+            FileWatcher::new(existing_dirs, self.pipeline.clone())
+                .map_err(|e| tracing::error!("Failed to start file watcher: {e}"))
+                .ok()
+        };
+        *self._watcher.lock().await = watcher;
     }
 }
 
@@ -147,8 +162,10 @@ pub fn run() {
                     searcher,
                     pipeline,
                     cache_dir: app_dir.join("cache"),
+                    app_dir: app_dir.clone(),
                     retry_queue,
                     libreoffice_available: lo,
+                    watched_dirs: Mutex::new(vec![]),
                     _watcher: Mutex::new(None),
                 }
             });
