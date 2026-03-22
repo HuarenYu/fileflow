@@ -11,7 +11,8 @@ describe('SearchBar', () => {
     const input = screen.getByPlaceholderText('搜索文件，支持自然语言...')
     await userEvent.type(input, 'hello')
 
-    expect(onQuery).toHaveBeenCalledWith(expect.stringContaining('h'))
+    expect(onQuery).toHaveBeenCalledTimes(5)
+    expect(onQuery).toHaveBeenCalledWith('h')
   })
 
   it('shows clear button when query is non-empty', () => {
