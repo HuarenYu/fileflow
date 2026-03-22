@@ -83,6 +83,8 @@ async fn soft_delete_then_vector_query_excludes_deleted() {
     let filters = fileflow_lib::search::SearchFilters::default();
     let results = store.vector_search(&v1, 10, &filters).await.unwrap();
 
+    // "alive" chunk must appear (non-empty results)
+    assert!(!results.is_empty(), "vector search should return results");
     // "dead" chunk should not appear in results
     assert!(
         results.iter().all(|(_, c)| c.id != "dead"),
