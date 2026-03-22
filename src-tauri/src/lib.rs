@@ -57,7 +57,10 @@ impl AppState {
         };
 
         // 3. Persist using the snapshot (lock already released)
-        save_watched_dirs(&self.app_dir, &dirs_snapshot);
+        let app_dir = self.app_dir.clone();
+        tokio::task::spawn_blocking(move || save_watched_dirs(&app_dir, &dirs_snapshot))
+            .await
+            .ok(); // ignore JoinError; save_watched_dirs logs its own errors
 
         // 4. Rebuild watcher (after releasing the lock)
         self.rebuild_watcher().await;
@@ -83,7 +86,10 @@ impl AppState {
         };
 
         // 3. Persist (lock already released)
-        save_watched_dirs(&self.app_dir, &dirs_snapshot);
+        let app_dir = self.app_dir.clone();
+        tokio::task::spawn_blocking(move || save_watched_dirs(&app_dir, &dirs_snapshot))
+            .await
+            .ok(); // ignore JoinError; save_watched_dirs logs its own errors
 
         // 4. Rebuild watcher (lock already released)
         self.rebuild_watcher().await;
@@ -102,7 +108,17 @@ impl AppState {
 
     async fn rebuild_watcher(&self) {
         let dirs = self.watched_dirs.lock().await.clone();
-        let existing_dirs: Vec<PathBuf> = dirs.into_iter().filter(|d| d.exists()).collect();
+        let existing_dirs: Vec<PathBuf> = dirs
+            .into_iter()
+            .filter(|d| {
+                if d.exists() {
+                    true
+                } else {
+                    tracing::warn!("Skipping non-existent watched dir: {}", d.display());
+                    false
+                }
+            })
+            .collect();
         let watcher = if existing_dirs.is_empty() {
             None
         } else {

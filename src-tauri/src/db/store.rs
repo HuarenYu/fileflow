@@ -88,8 +88,9 @@ impl FileStore {
     pub async fn soft_delete_by_path(&self, path: &str) -> Result<()> {
         let tbl = self.table().await?;
         let now = chrono::Utc::now().timestamp_millis();
+        let safe_path = path.replace('\'', "''");
         tbl.update()
-            .only_if(format!("path = '{path}'"))
+            .only_if(format!("path = '{safe_path}'"))
             .column("deleted_at", now.to_string())
             .execute()
             .await?;
