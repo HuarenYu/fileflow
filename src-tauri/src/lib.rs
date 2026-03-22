@@ -73,6 +73,33 @@ fn walkdir_files(dir: &PathBuf) -> anyhow::Result<Vec<PathBuf>> {
     Ok(files)
 }
 
+fn load_watched_dirs(app_dir: &std::path::Path) -> Vec<PathBuf> {
+    let path = app_dir.join("watched_dirs.json");
+    let Ok(data) = std::fs::read_to_string(&path) else {
+        return vec![];
+    };
+    let Ok(strings) = serde_json::from_str::<Vec<String>>(&data) else {
+        tracing::warn!("Failed to parse watched_dirs.json, starting fresh");
+        return vec![];
+    };
+    strings.into_iter().map(PathBuf::from).collect()
+}
+
+fn save_watched_dirs(app_dir: &std::path::Path, dirs: &[PathBuf]) {
+    let path = app_dir.join("watched_dirs.json");
+    let strings: Vec<String> = dirs
+        .iter()
+        .map(|d| d.to_string_lossy().into_owned())
+        .collect();
+    let Ok(data) = serde_json::to_string(&strings) else {
+        tracing::error!("Failed to serialize watched_dirs");
+        return;
+    };
+    if let Err(e) = std::fs::write(&path, data) {
+        tracing::error!("Failed to save watched_dirs.json: {e}");
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -141,4 +168,33 @@ pub fn run() {
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tempfile::tempdir;
+
+    #[test]
+    fn test_watched_dirs_round_trip() {
+        let dir = tempdir().unwrap();
+        let app_dir = dir.path();
+
+        let paths = vec![
+            PathBuf::from("/home/user/Documents"),
+            PathBuf::from("/home/user/Bob's Files"),  // single-quote stress test
+        ];
+
+        save_watched_dirs(app_dir, &paths);
+        let loaded = load_watched_dirs(app_dir);
+        assert_eq!(loaded, paths);
+    }
+
+    #[test]
+    fn test_load_watched_dirs_missing_file() {
+        let dir = tempdir().unwrap();
+        // No file written — should return empty vec, not panic
+        let result = load_watched_dirs(dir.path());
+        assert!(result.is_empty());
+    }
 }
