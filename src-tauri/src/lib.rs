@@ -65,8 +65,29 @@ impl AppState {
         Ok(())
     }
 
-    pub async fn remove_directory(&self, _path: &str) -> anyhow::Result<()> {
-        // Soft-delete all entries under this path
+    pub async fn remove_directory(&self, path: &str) -> anyhow::Result<()> {
+        // 1. Soft-delete all records under this path prefix
+        let prefix = if path.ends_with('/') {
+            path.to_string()
+        } else {
+            format!("{path}/")
+        };
+        self.store.soft_delete_by_prefix(&prefix).await?;
+
+        // 2. Remove from watched_dirs; capture snapshot
+        let dirs_snapshot = {
+            let dir = PathBuf::from(path);
+            let mut dirs = self.watched_dirs.lock().await;
+            dirs.retain(|d| d != &dir);
+            dirs.clone()
+        };
+
+        // 3. Persist (lock already released)
+        save_watched_dirs(&self.app_dir, &dirs_snapshot);
+
+        // 4. Rebuild watcher (lock already released)
+        self.rebuild_watcher().await;
+
         Ok(())
     }
 
