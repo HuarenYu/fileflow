@@ -49,8 +49,8 @@ describe('PreviewPanel', () => {
 
     await waitFor(() => {
       const video = document.querySelector('video')
-      expect(video).toBeInTheDocument()
-      expect(video?.src).toContain('asset://localhost')
+      expect(video).not.toBeNull()
+      expect(video).toHaveAttribute('src', expect.stringContaining('asset://localhost'))
     })
   })
 
@@ -85,9 +85,9 @@ describe('PreviewPanel', () => {
     // Should render without throwing
     expect(() => render(<PreviewPanel file={mockFile} />)).not.toThrow()
 
-    // After the rejection resolves, should show loading or empty, not crash
+    // After the rejection resolves, preview stays null — component shows 加载中...
     await waitFor(() => {
-      expect(screen.queryByText('选择文件以预览')).not.toBeInTheDocument()
+      expect(screen.getByText('加载中...')).toBeInTheDocument()
     })
   })
 })
