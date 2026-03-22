@@ -15,6 +15,10 @@ vi.mock('../../hooks/useIndexProgress', () => ({
 import { useIndexProgress } from '../../hooks/useIndexProgress'
 
 describe('StatusBar', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
   it('shows indexed count when idle', () => {
     vi.mocked(useIndexProgress).mockReturnValue({
       total: 10, indexed: 8, failed: 0, is_running: false,
