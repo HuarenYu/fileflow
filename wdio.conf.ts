@@ -5,7 +5,7 @@ export const config: Options.Testrunner = {
   autoCompileOpts: {
     autoCompile: true,
     tsNodeOpts: {
-      project: './tsconfig.json',
+      project: './tsconfig.e2e.json',
       transpileOnly: true,
     },
   },
@@ -25,7 +25,7 @@ export const config: Options.Testrunner = {
 
   services: [
     [
-      'tauri',
+      '@wdio/tauri-service',
       {
         tauriDriverPath: 'tauri-driver',
       },

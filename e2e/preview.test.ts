@@ -19,7 +19,7 @@ describe('Preview Panel', () => {
     await browser.execute(
       (dirPath: string) => {
         // @ts-expect-error
-        window.__TAURI__.core.invoke('add_directory', { path: dirPath })
+        return window.__TAURI__.core.invoke('add_directory', { path: dirPath })
       },
       fixtureDir
     )
@@ -68,16 +68,25 @@ describe('Preview Panel', () => {
   })
 
   it('text preview shows file content in <pre>', async () => {
+    // Search specifically for sample.txt to get a clean file list
     const input = await $('input[type="text"]')
-    await input.setValue('')
-    await browser.pause(500)
+    await input.setValue('sample.txt')
+
+    await browser.waitUntil(
+      async () => {
+        const items = await $$('[data-testid="file-item"]')
+        return items.length > 0
+      },
+      { timeout: 10000, timeoutMsg: 'File list did not populate for sample.txt search' }
+    )
 
     const items = await $$('[data-testid="file-item"]')
     const txtItem = await Promise.all(
       items.map(async (i) => ({ el: i, text: await i.getText() }))
     ).then((all) => all.find((x) => x.text.includes('sample.txt'))?.el)
 
-    if (txtItem) await txtItem.click()
+    expect(txtItem).toBeDefined()
+    await txtItem!.click()
 
     await browser.waitUntil(
       async () => !!(await $('pre').isExisting()),
@@ -89,12 +98,25 @@ describe('Preview Panel', () => {
   })
 
   it('PDF preview shows a canvas element', async () => {
+    // Search specifically for sample.pdf to get a clean file list
+    const input = await $('input[type="text"]')
+    await input.setValue('sample.pdf')
+
+    await browser.waitUntil(
+      async () => {
+        const items = await $$('[data-testid="file-item"]')
+        return items.length > 0
+      },
+      { timeout: 10000, timeoutMsg: 'File list did not populate for sample.pdf search' }
+    )
+
     const items = await $$('[data-testid="file-item"]')
     const pdfItem = await Promise.all(
       items.map(async (i) => ({ el: i, text: await i.getText() }))
     ).then((all) => all.find((x) => x.text.includes('sample.pdf'))?.el)
 
-    if (pdfItem) await pdfItem.click()
+    expect(pdfItem).toBeDefined()
+    await pdfItem!.click()
 
     await browser.waitUntil(
       async () => !!(await $('canvas').isExisting()),

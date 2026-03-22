@@ -13,7 +13,7 @@ describe('Search', () => {
     await browser.execute(
       (dirPath: string) => {
         // @ts-expect-error
-        window.__TAURI__.core.invoke('add_directory', { path: dirPath })
+        return window.__TAURI__.core.invoke('add_directory', { path: dirPath })
       },
       fixtureDir
     )

@@ -27,7 +27,7 @@ describe('Directory Indexing', () => {
     await browser.execute(
       (dirPath: string) => {
         // @ts-expect-error tauri is available in the WebView
-        window.__TAURI__.core.invoke('add_directory', { path: dirPath })
+        return window.__TAURI__.core.invoke('add_directory', { path: dirPath })
       },
       fixtureDir
     )
