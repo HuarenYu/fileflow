@@ -54,6 +54,7 @@ export function FileItem({ file, selected, onClick }: Props) {
 
   return (
     <div
+      data-testid="file-item"
       onClick={onClick}
       className={`flex items-center px-3 py-2 cursor-pointer gap-3 border-b border-gray-800 hover:bg-gray-800 transition-colors ${
         selected ? "bg-gray-700" : ""
