@@ -12,6 +12,12 @@ dist
 dist-ssr
 *.local
 
+# Tauri build artifacts
+src-tauri/target/
+
+# ML model cache
+src-tauri/.fastembed_cache/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
