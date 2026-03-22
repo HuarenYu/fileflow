@@ -194,6 +194,7 @@ pub fn run() {
                     }
                 });
 
+                let watched_dirs = load_watched_dirs(&app_dir);
                 AppState {
                     store,
                     searcher,
@@ -202,12 +203,21 @@ pub fn run() {
                     app_dir: app_dir.clone(),
                     retry_queue,
                     libreoffice_available: lo,
-                    watched_dirs: Mutex::new(vec![]),
+                    watched_dirs: Mutex::new(watched_dirs),
                     _watcher: Mutex::new(None),
                 }
             });
 
             app.manage(state);
+
+            // Resume watching for persisted directories
+            // Use app.handle().clone() to get a 'static-capable handle — tokio::spawn requires 'static.
+            // tauri::State<'_, T> is not 'static, so we cannot move it into spawn directly.
+            let handle = app.handle().clone();
+            tauri::async_runtime::spawn(async move {
+                handle.state::<AppState>().rebuild_watcher().await;
+            });
+
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
