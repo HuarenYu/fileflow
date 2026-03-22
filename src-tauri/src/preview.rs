@@ -29,6 +29,7 @@ pub fn preview(path: &Path, cache_dir: &Path) -> Result<PreviewData> {
         .unwrap_or("")
         .to_lowercase();
     match ext.as_str() {
+        // TODO: validate file existence for Pdf/Image/Video branches
         "pdf" => Ok(PreviewData::Pdf {
             path: path.to_string_lossy().into(),
         }),
@@ -170,7 +171,7 @@ mod tests {
     }
 
     #[test]
-    fn preview_missing_file_returns_error() {
+    fn preview_missing_file_unknown_ext_returns_error() {
         // .xyz (unknown ext) goes through fs::metadata — will error if file missing
         // Note: .pdf with missing path returns Ok(Pdf{path}) — no existence check
         let p = std::path::Path::new("/tmp/nonexistent_fileflow_test.xyz");
