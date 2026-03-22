@@ -35,7 +35,7 @@ pub struct AppState {
 
 impl AppState {
     pub async fn add_directory(&self, path: &str) -> anyhow::Result<()> {
-        // Walk existing files and index them
+        // 1. Walk existing files and index them in the background (existing behaviour)
         let dir = PathBuf::from(path);
         let pipeline = self.pipeline.clone();
         let dir_clone = dir.clone();
@@ -46,6 +46,22 @@ impl AppState {
                 }
             }
         });
+
+        // 2. Append to watched_dirs (skip if already present); capture snapshot
+        let dirs_snapshot = {
+            let mut dirs = self.watched_dirs.lock().await;
+            if !dirs.contains(&dir) {
+                dirs.push(dir.clone());
+            }
+            dirs.clone()
+        };
+
+        // 3. Persist using the snapshot (lock already released)
+        save_watched_dirs(&self.app_dir, &dirs_snapshot);
+
+        // 4. Rebuild watcher (after releasing the lock)
+        self.rebuild_watcher().await;
+
         Ok(())
     }
 
