@@ -110,3 +110,70 @@ fn convert_office_to_images(path: &Path, cache_dir: &Path) -> Result<PreviewData
         .collect();
     Ok(PreviewData::OfficeImages { image_paths: images })
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::io::Write;
+    use tempfile::{tempdir, NamedTempFile};
+
+    fn make_file(ext: &str) -> NamedTempFile {
+        tempfile::Builder::new()
+            .suffix(&format!(".{ext}"))
+            .tempfile()
+            .unwrap()
+    }
+
+    fn make_file_with_content(ext: &str, content: &str) -> NamedTempFile {
+        let mut f = make_file(ext);
+        f.write_all(content.as_bytes()).unwrap();
+        f
+    }
+
+    fn cache() -> tempfile::TempDir {
+        tempdir().unwrap()
+    }
+
+    #[test]
+    fn preview_pdf_returns_path() {
+        let f = make_file("pdf");
+        let result = preview(f.path(), cache().path()).unwrap();
+        assert!(matches!(result, PreviewData::Pdf { .. }));
+        if let PreviewData::Pdf { path } = result {
+            assert!(path.ends_with(".pdf"));
+        }
+    }
+
+    #[test]
+    fn preview_image_returns_path() {
+        let f = make_file("jpg");
+        let result = preview(f.path(), cache().path()).unwrap();
+        assert!(matches!(result, PreviewData::Image { .. }));
+    }
+
+    #[test]
+    fn preview_text_reads_content() {
+        let f = make_file_with_content("txt", "hello fileflow");
+        let result = preview(f.path(), cache().path()).unwrap();
+        assert!(matches!(result, PreviewData::Text { .. }));
+        if let PreviewData::Text { content, language } = result {
+            assert!(content.contains("hello fileflow"));
+            assert_eq!(language, "txt");
+        }
+    }
+
+    #[test]
+    fn preview_unknown_returns_metadata() {
+        let f = make_file("xyz");
+        let result = preview(f.path(), cache().path()).unwrap();
+        assert!(matches!(result, PreviewData::Metadata { .. }));
+    }
+
+    #[test]
+    fn preview_missing_file_returns_error() {
+        // .xyz (unknown ext) goes through fs::metadata — will error if file missing
+        // Note: .pdf with missing path returns Ok(Pdf{path}) — no existence check
+        let p = std::path::Path::new("/tmp/nonexistent_fileflow_test.xyz");
+        assert!(preview(p, cache().path()).is_err());
+    }
+}
