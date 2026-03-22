@@ -28,6 +28,10 @@ const mockResult: SearchResult = {
 }
 
 describe('FileList', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
   it('shows empty state when no query and no files', () => {
     render(<FileList category="all" query="" onSelect={vi.fn()} />)
     expect(screen.getByText('此分类暂无文件')).toBeInTheDocument()
