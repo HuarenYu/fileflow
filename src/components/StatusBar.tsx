@@ -5,7 +5,10 @@ export function StatusBar() {
   const pct = total > 0 ? Math.round((indexed / total) * 100) : 0;
 
   return (
-    <footer className="h-7 bg-gray-900 border-t border-gray-700 flex items-center px-3 gap-4 text-xs text-gray-400">
+    <footer
+      data-testid="status-bar"
+      className="h-7 bg-gray-900 border-t border-gray-700 flex items-center px-3 gap-4 text-xs text-gray-400"
+    >
       {is_running ? (
         <>
           <span className="animate-pulse text-blue-400">● 索引中</span>

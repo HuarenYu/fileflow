@@ -31,11 +31,10 @@ impl RetryQueue {
 
     pub fn drain(&self) -> Result<Vec<String>> {
         let conn = self.conn.lock().unwrap();
-        let mut stmt = conn.prepare("SELECT path FROM retry_queue ORDER BY created_at")?;
+        let mut stmt = conn.prepare("SELECT path FROM retry_queue ORDER BY created_at, id")?;
         let paths: Vec<String> = stmt
             .query_map([], |row| row.get(0))?
-            .filter_map(|r| r.ok())
-            .collect();
+            .collect::<Result<_, _>>()?;
         conn.execute("DELETE FROM retry_queue", [])?;
         Ok(paths)
     }

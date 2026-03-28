@@ -48,6 +48,7 @@ export function Sidebar({ selected, onSelect }: Props) {
       </nav>
       <div className="p-2 border-t border-gray-700">
         <button
+          data-testid="add-directory"
           onClick={handleAddDirectory}
           className="w-full text-xs text-gray-400 hover:text-white py-1.5 px-3 rounded hover:bg-gray-800 text-left"
         >
