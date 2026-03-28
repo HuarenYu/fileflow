@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run:*)",
+      "Bash(netstat -ano)",
+      "Bash(findstr :1420)",
+      "Bash(netsh int:*)",
+      "Bash(findstr /C:\"1420\")",
+      "Bash(winget install:*)",
+      "Bash(choco install:*)",
+      "Bash(protoc:*)",
+      "Bash(curl -L --max-time 30 \"https://parcel.pyke.io/v2/delivery/ortrs/packages/msort-binary/1.20.0/ortrs_static-v1.20.0-x86_64-pc-windows-msvc.tgz\" -o /tmp/ort_test.tgz)",
+      "Bash(mkdir -p /tmp/ort)",
+      "Bash(tar -xzf /tmp/ort_test.tgz -C /tmp/ort)",
+      "Read(//tmp/**)",
+      "Bash(ORT_LIB_LOCATION=\"C:/tmp/ort/onnxruntime\" npm run tauri dev 2>&1)",
+      "Skill(update-config)"
+    ]
+  }
+}
